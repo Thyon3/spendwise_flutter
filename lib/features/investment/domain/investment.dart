@@ -9,9 +9,8 @@ class Investment {
   final String currency;
   final DateTime purchaseDate;
   final String? notes;
-  final DateTime createdAt;
 
-  Investment({
+  const Investment({
     required this.id,
     required this.name,
     required this.type,
@@ -22,28 +21,24 @@ class Investment {
     required this.currency,
     required this.purchaseDate,
     this.notes,
-    required this.createdAt,
   });
-
-  factory Investment.fromJson(Map<String, dynamic> json) {
-    return Investment(
-      id: json['id'],
-      name: json['name'],
-      type: json['type'],
-      symbol: json['symbol'],
-      quantity: json['quantity'].toDouble(),
-      purchasePrice: json['purchasePrice'].toDouble(),
-      currentPrice: json['currentPrice'].toDouble(),
-      currency: json['currency'],
-      purchaseDate: DateTime.parse(json['purchaseDate']),
-      notes: json['notes'],
-      createdAt: DateTime.parse(json['createdAt']),
-    );
-  }
 
   double get totalValue => quantity * currentPrice;
   double get totalCost => quantity * purchasePrice;
-  double get profitLoss => totalValue - totalCost;
-  double get profitLossPercentage => 
-      ((currentPrice - purchasePrice) / purchasePrice * 100);
+  double get gainLoss => totalValue - totalCost;
+  double get gainLossPercent => totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
+  bool get isProfit => gainLoss >= 0;
+
+  factory Investment.fromJson(Map<String, dynamic> json) => Investment(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        type: json['type'] as String,
+        symbol: json['symbol'] as String?,
+        quantity: (json['quantity'] as num).toDouble(),
+        purchasePrice: (json['purchasePrice'] as num).toDouble(),
+        currentPrice: (json['currentPrice'] as num).toDouble(),
+        currency: json['currency'] as String,
+        purchaseDate: DateTime.parse(json['purchaseDate'] as String),
+        notes: json['notes'] as String?,
+      );
 }
