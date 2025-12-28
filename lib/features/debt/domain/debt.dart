@@ -10,9 +10,8 @@ class Debt {
   final DateTime? dueDate;
   final double? minimumPayment;
   final bool isPaidOff;
-  final DateTime createdAt;
 
-  Debt({
+  const Debt({
     required this.id,
     required this.name,
     required this.type,
@@ -24,26 +23,22 @@ class Debt {
     this.dueDate,
     this.minimumPayment,
     required this.isPaidOff,
-    required this.createdAt,
   });
 
-  factory Debt.fromJson(Map<String, dynamic> json) {
-    return Debt(
-      id: json['id'],
-      name: json['name'],
-      type: json['type'],
-      totalAmount: json['totalAmount'].toDouble(),
-      remainingAmount: json['remainingAmount'].toDouble(),
-      interestRate: json['interestRate']?.toDouble(),
-      currency: json['currency'],
-      startDate: DateTime.parse(json['startDate']),
-      dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate']) : null,
-      minimumPayment: json['minimumPayment']?.toDouble(),
-      isPaidOff: json['isPaidOff'],
-      createdAt: DateTime.parse(json['createdAt']),
-    );
-  }
+  double get paidAmount => totalAmount - remainingAmount;
+  double get progress => totalAmount > 0 ? (paidAmount / totalAmount).clamp(0.0, 1.0) : 0;
 
-  double get progressPercentage => 
-      ((totalAmount - remainingAmount) / totalAmount * 100).clamp(0, 100);
+  factory Debt.fromJson(Map<String, dynamic> json) => Debt(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        type: json['type'] as String,
+        totalAmount: (json['totalAmount'] as num).toDouble(),
+        remainingAmount: (json['remainingAmount'] as num).toDouble(),
+        interestRate: json['interestRate'] != null ? (json['interestRate'] as num).toDouble() : null,
+        currency: json['currency'] as String,
+        startDate: DateTime.parse(json['startDate'] as String),
+        dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate']) : null,
+        minimumPayment: json['minimumPayment'] != null ? (json['minimumPayment'] as num).toDouble() : null,
+        isPaidOff: json['isPaidOff'] as bool? ?? false,
+      );
 }
