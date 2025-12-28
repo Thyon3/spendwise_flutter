@@ -1,152 +1,194 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../domain/subscription.dart';
+import 'subscriptions_provider.dart';
 
-class SubscriptionsScreen extends StatelessWidget {
+class SubscriptionsScreen extends ConsumerWidget {
   const SubscriptionsScreen({super.key});
+
+  static const _cycles = ['MONTHLY', 'YEARLY', 'WEEKLY'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final subsAsync = ref.watch(subscriptionsProvider);
+    final analyticsAsync = ref.watch(subscriptionAnalyticsProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Subscriptions')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddSheet(context, ref),
+        child: const Icon(Icons.add),
+      ),
+      body: Column(
+        children: [
+          analyticsAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (analytics) => _AnalyticsBanner(analytics: analytics),
+          ),
+          Expanded(
+            child: subsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (subs) {
+                if (subs.isEmpty) return const Center(child: Text('No subscriptions tracked.'));
+                final upcoming = subs.where((s) => s.isUpcoming && s.isActive).toList();
+                final rest = subs.where((s) => !s.isUpcoming || !s.isActive).toList();
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (upcoming.isNotEmpty) ...[
+                      const Text('Upcoming Renewals', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      ...upcoming.map((s) => _SubscriptionTile(sub: s, ref: ref)),
+                      const Divider(height: 24),
+                    ],
+                    ...rest.map((s) => _SubscriptionTile(sub: s, ref: ref)),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddSheet(BuildContext context, WidgetRef ref) {
+    final nameCtrl = TextEditingController();
+    final providerCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    String selectedCycle = _cycles.first;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: StatefulBuilder(
+          builder: (ctx, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Add Subscription', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: providerCtrl, decoration: const InputDecoration(labelText: 'Provider', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'Amount', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedCycle,
+                decoration: const InputDecoration(labelText: 'Billing Cycle', border: OutlineInputBorder()),
+                items: _cycles.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setState(() => selectedCycle = v!),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                  final name = nameCtrl.text.trim();
+                  final amount = double.tryParse(amountCtrl.text);
+                  if (name.isEmpty || amount == null) return;
+                  final now = DateTime.now();
+                  final next = selectedCycle == 'YEARLY'
+                      ? DateTime(now.year + 1, now.month, now.day)
+                      : selectedCycle == 'WEEKLY'
+                          ? now.add(const Duration(days: 7))
+                          : DateTime(now.year, now.month + 1, now.day);
+                  ref.read(subscriptionsProvider.notifier).create({
+                    'name': name,
+                    'provider': providerCtrl.text.trim().isEmpty ? name : providerCtrl.text.trim(),
+                    'amount': amount,
+                    'currency': 'USD',
+                    'billingCycle': selectedCycle,
+                    'startDate': now.toIso8601String(),
+                    'nextBillingDate': next.toIso8601String(),
+                  });
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalyticsBanner extends StatelessWidget {
+  final Map<String, dynamic> analytics;
+  const _AnalyticsBanner({required this.analytics});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Subscriptions'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              // Navigate to add subscription
-            },
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    final monthly = (analytics['monthlyTotal'] ?? 0.0) as num;
+    final total = (analytics['total'] ?? 0) as num;
+    final upcoming = (analytics['upcoming'] as List?)?.length ?? 0;
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryCard(context),
-          const SizedBox(height: 16),
-          Text(
-            'Active Subscriptions',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          _buildSubscriptionCard(
-            context,
-            name: 'Netflix',
-            provider: 'Netflix Inc.',
-            amount: 15.99,
-            billingCycle: 'Monthly',
-            nextBilling: DateTime.now().add(const Duration(days: 5)),
-            color: Colors.red,
-          ),
-          const SizedBox(height: 8),
-          _buildSubscriptionCard(
-            context,
-            name: 'Spotify Premium',
-            provider: 'Spotify',
-            amount: 9.99,
-            billingCycle: 'Monthly',
-            nextBilling: DateTime.now().add(const Duration(days: 12)),
-            color: Colors.green,
-          ),
-          const SizedBox(height: 8),
-          _buildSubscriptionCard(
-            context,
-            name: 'Adobe Creative Cloud',
-            provider: 'Adobe',
-            amount: 54.99,
-            billingCycle: 'Monthly',
-            nextBilling: DateTime.now().add(const Duration(days: 20)),
-            color: Colors.purple,
-          ),
+          _Stat(label: 'Monthly', value: '\$${monthly.toStringAsFixed(2)}'),
+          _Stat(label: 'Active', value: '$total'),
+          _Stat(label: 'Due Soon', value: '$upcoming'),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSummaryCard(BuildContext context) {
+class _Stat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Stat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      );
+}
+
+class _SubscriptionTile extends StatelessWidget {
+  final Subscription sub;
+  final WidgetRef ref;
+  const _SubscriptionTile({required this.sub, required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final daysUntil = sub.nextBillingDate.difference(DateTime.now()).inDays;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Monthly Total',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '\$80.97',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Yearly: \$971.64',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubscriptionCard(
-    BuildContext context, {
-    required String name,
-    required String provider,
-    required double amount,
-    required String billingCycle,
-    required DateTime nextBilling,
-    required Color color,
-  }) {
-    final daysUntil = nextBilling.difference(DateTime.now()).inDays;
-
-    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(Icons.subscriptions, color: color),
-        ),
-        title: Text(name),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(provider),
-            const SizedBox(height: 4),
-            Text(
-              'Next billing in $daysUntil days',
-              style: TextStyle(
-                fontSize: 12,
-                color: daysUntil <= 3 ? Colors.orange : Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
+        leading: CircleAvatar(child: Text(sub.name[0].toUpperCase())),
+        title: Text(sub.name),
+        subtitle: Text('${sub.provider} · ${sub.billingCycle}'),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              '\$${amount.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            Text(
-              billingCycle,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
+            Text('${sub.currency} ${sub.amount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(daysUntil == 0 ? 'Today' : 'in $daysUntil days', style: TextStyle(fontSize: 11, color: sub.isUpcoming ? Colors.orange : Colors.grey)),
           ],
         ),
-        onTap: () {
-          // Navigate to subscription details
-        },
+        onLongPress: () => showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(sub.name),
+            actions: [
+              TextButton(onPressed: () { ref.read(subscriptionsProvider.notifier).cancel(sub.id); Navigator.pop(ctx); }, child: const Text('Cancel Sub', style: TextStyle(color: Colors.orange))),
+              TextButton(onPressed: () { ref.read(subscriptionsProvider.notifier).delete(sub.id); Navigator.pop(ctx); }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+            ],
+          ),
+        ),
       ),
     );
   }
