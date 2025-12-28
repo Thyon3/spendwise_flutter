@@ -5,62 +5,36 @@ class Subscription {
   final double amount;
   final String currency;
   final String billingCycle;
-  final DateTime startDate;
   final DateTime nextBillingDate;
-  final DateTime? endDate;
   final bool isActive;
-  final String? categoryId;
   final int reminderDays;
-  final DateTime createdAt;
 
-  Subscription({
+  const Subscription({
     required this.id,
     required this.name,
     required this.provider,
     required this.amount,
     required this.currency,
     required this.billingCycle,
-    required this.startDate,
     required this.nextBillingDate,
-    this.endDate,
     required this.isActive,
-    this.categoryId,
     required this.reminderDays,
-    required this.createdAt,
   });
 
-  factory Subscription.fromJson(Map<String, dynamic> json) {
-    return Subscription(
-      id: json['id'],
-      name: json['name'],
-      provider: json['provider'],
-      amount: json['amount'].toDouble(),
-      currency: json['currency'],
-      billingCycle: json['billingCycle'],
-      startDate: DateTime.parse(json['startDate']),
-      nextBillingDate: DateTime.parse(json['nextBillingDate']),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-      isActive: json['isActive'],
-      categoryId: json['categoryId'],
-      reminderDays: json['reminderDays'],
-      createdAt: DateTime.parse(json['createdAt']),
-    );
+  bool get isUpcoming {
+    final diff = nextBillingDate.difference(DateTime.now()).inDays;
+    return diff >= 0 && diff <= reminderDays;
   }
 
-  double get yearlyAmount {
-    switch (billingCycle) {
-      case 'MONTHLY':
-        return amount * 12;
-      case 'YEARLY':
-        return amount;
-      case 'WEEKLY':
-        return amount * 52;
-      default:
-        return amount * 12;
-    }
-  }
-
-  int get daysUntilNextBilling {
-    return nextBillingDate.difference(DateTime.now()).inDays;
-  }
+  factory Subscription.fromJson(Map<String, dynamic> json) => Subscription(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        provider: json['provider'] as String,
+        amount: (json['amount'] as num).toDouble(),
+        currency: json['currency'] as String,
+        billingCycle: json['billingCycle'] as String,
+        nextBillingDate: DateTime.parse(json['nextBillingDate'] as String),
+        isActive: json['isActive'] as bool? ?? true,
+        reminderDays: json['reminderDays'] as int? ?? 3,
+      );
 }
