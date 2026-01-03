@@ -10,6 +10,7 @@ import '../../features/home/presentation/screens/splash_screen.dart';
 import '../../features/expenses/presentation/screens/expense_add_edit_screen.dart';
 import '../../features/expenses/presentation/screens/recurring_expense_list_screen.dart';
 import '../../features/expenses/presentation/screens/tag_list_screen.dart';
+import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/expenses/domain/entities/expense.dart';
 import '../../features/categories/presentation/screens/category_list_screen.dart';
 
@@ -71,6 +72,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/tags',
         builder: (context, state) => const TagListScreen(),
+      ),
+      GoRoute(
+        path: '/reports',
+        builder: (context, state) => const ReportsScreen(),
       ),
     ],
   );
