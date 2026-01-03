@@ -5,6 +5,8 @@ import 'secure_storage_service.dart';
 abstract class ApiClient {
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters});
   Future<Response> post(String path, {dynamic data});
+  Future<Response> put(String path, {dynamic data});
+  Future<Response> delete(String path);
 }
 
 class DioApiClient implements ApiClient {
@@ -44,6 +46,24 @@ class DioApiClient implements ApiClient {
   Future<Response> post(String path, {dynamic data}) async {
     try {
       return await _dio.post(path, data: data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  @override
+  Future<Response> put(String path, {dynamic data}) async {
+    try {
+      return await _dio.put(path, data: data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  @override
+  Future<Response> delete(String path) async {
+    try {
+      return await _dio.delete(path);
     } on DioException catch (e) {
       throw _handleError(e);
     }
