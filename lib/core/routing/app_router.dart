@@ -7,6 +7,9 @@ import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/splash_screen.dart';
+import '../../features/expenses/presentation/screens/expense_add_edit_screen.dart';
+import '../../features/expenses/domain/entities/expense.dart';
+import '../../features/categories/presentation/screens/category_list_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -43,6 +46,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/home',
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/expenses/add',
+        builder: (context, state) => const ExpenseAddEditScreen(),
+      ),
+      GoRoute(
+        path: '/expenses/edit',
+        builder: (context, state) {
+          final expense = state.extra as Expense?;
+          return ExpenseAddEditScreen(expense: expense);
+        },
+      ),
+      GoRoute(
+        path: '/categories',
+        builder: (context, state) => const CategoryListScreen(),
       ),
     ],
   );
