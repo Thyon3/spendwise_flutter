@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../errors/failures.dart';
+import 'secure_storage_service.dart';
 
 abstract class ApiClient {
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters});
@@ -8,8 +9,9 @@ abstract class ApiClient {
 
 class DioApiClient implements ApiClient {
   final Dio _dio;
+  final SecureStorageService _storage;
 
-  DioApiClient(String baseUrl)
+  DioApiClient(String baseUrl, this._storage)
       : _dio = Dio(BaseOptions(
           baseUrl: baseUrl,
           connectTimeout: const Duration(seconds: 10),
@@ -17,6 +19,16 @@ class DioApiClient implements ApiClient {
           contentType: 'application/json',
         )) {
     _dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+    
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await _storage.getToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        return handler.next(options);
+      },
+    ));
   }
 
   @override
