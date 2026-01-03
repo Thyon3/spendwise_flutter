@@ -21,11 +21,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AuthUser> register(String email, String password) async {
-    final user = await _remoteDataSource.register(email, password);
-    // Note: Register in our backend currently doesn't return token, 
-    // we might need to login after register or update backend.
-    // For now, let's assume we might need to login.
-    return user;
+    await _remoteDataSource.register(email, password);
+    return login(email, password);
   }
 
   @override

@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/application/auth_notifier.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToNext();
+    _initApp();
   }
 
-  Future<void> _navigateToNext() async {
+  Future<void> _initApp() async {
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) {
-      context.go('/auth/sign-in');
+      await ref.read(authProvider.notifier).loadCurrentUser();
     }
   }
 

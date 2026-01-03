@@ -1,12 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../application/auth_notifier.dart';
+import '../../application/auth_state.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
   @override
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
+    ref.listen(authProvider, (previous, next) {
+      if (next is AuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.message), backgroundColor: Colors.red),
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text('Sign Up')),
       body: Padding(
@@ -22,23 +52,26 @@ class SignUpScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(
                   labelText: 'Full Name',
                   prefixIcon: Icon(Icons.person),
                 ),
               ),
               const SizedBox(height: 16),
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
                   labelText: 'Email',
                   prefixIcon: Icon(Icons.email),
                 ),
               ),
               const SizedBox(height: 16),
-              const TextField(
+              TextField(
+                controller: _passwordController,
                 obscureText: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Password',
                   prefixIcon: Icon(Icons.lock),
                 ),
@@ -46,7 +79,13 @@ class SignUpScreen extends StatelessWidget {
               const SizedBox(height: 24),
               PrimaryButton(
                 label: 'Sign Up',
-                onPressed: () => context.go('/home'),
+                isLoading: authState is AuthLoading,
+                onPressed: () {
+                  ref.read(authProvider.notifier).register(
+                        _emailController.text.trim(),
+                        _passwordController.text,
+                      );
+                },
               ),
               const SizedBox(height: 16),
               TextButton(
