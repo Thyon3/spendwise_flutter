@@ -8,6 +8,7 @@ import '../../expenses/application/expense_list_notifier.dart';
 import '../../expenses/application/expense_summary_notifier.dart';
 import '../../categories/application/category_notifier.dart';
 import '../../expenses/application/tag_notifier.dart';
+import '../../exports/infrastructure/export_service.dart';
 import '../../../core/presentation/widgets/list_skeleton.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -50,6 +51,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const PopupMenuItem(value: '/budgets', child: Text('Budgets')),
             ],
             icon: const Icon(Icons.menu),
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_download),
+            tooltip: 'Export CSV',
+            onPressed: () async {
+              final currentFilters = ref.read(expenseFiltersProvider);
+              try {
+                await ref.read(exportServiceProvider).exportAndShareExpenses(
+                      from: currentFilters.from,
+                      to: currentFilters.to,
+                      categoryId: currentFilters.categoryId,
+                      tagId: currentFilters.tagId,
+                      search: currentFilters.search,
+                    );
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Export failed: $e')),
+                  );
+                }
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
