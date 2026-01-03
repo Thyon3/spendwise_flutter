@@ -7,33 +7,51 @@ import '../../auth/application/auth_state.dart';
 import '../../expenses/application/expense_list_notifier.dart';
 import '../../expenses/application/expense_summary_notifier.dart';
 import '../../categories/application/category_notifier.dart';
+import '../../expenses/application/tag_notifier.dart';
 import '../../../core/presentation/widgets/list_skeleton.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState is Authenticated ? authState.user : null;
     final expenseListAsync = ref.watch(expenseListProvider);
     final summaryAsync = ref.watch(expenseSummaryProvider);
     final categoriesAsync = ref.watch(categoryListProvider);
+    final tagsAsync = ref.watch(tagListProvider);
     final filters = ref.watch(expenseFiltersProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Expense Tracker'),
+        title: const Text('Dashboard'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.category),
-            onPressed: () => context.push('/categories'),
-            tooltip: 'Categories',
+          PopupMenuButton<String>(
+            onSelected: (val) => context.push(val),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: '/categories', child: Text('Categories')),
+              const PopupMenuItem(value: '/tags', child: Text('Tags')),
+              const PopupMenuItem(value: '/recurring-expenses', child: Text('Recurring Expenses')),
+            ],
+            icon: const Icon(Icons.menu),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _confirmLogout(context, ref),
-            tooltip: 'Logout',
           ),
         ],
       ),
@@ -52,9 +70,7 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Hello, ${user?.email.split('@')[0] ?? 'User'}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     summaryAsync.when(
@@ -62,10 +78,33 @@ class HomeScreen extends ConsumerWidget {
                       loading: () => _SummarySkeleton(),
                       error: (e, _) => Center(child: Text('Error: $e')),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search expenses...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  ref.read(expenseFiltersProvider.notifier).state = filters.copyWith(search: '');
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onChanged: (val) {
+                        // In a real app, use debouncing
+                        ref.read(expenseFiltersProvider.notifier).state = filters.copyWith(search: val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     _FilterBar(
                       filters: filters,
                       categoriesAsync: categoriesAsync,
+                      tagsAsync: tagsAsync,
                     ),
                   ],
                 ),
@@ -73,9 +112,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             expenseListAsync.when(
               data: (expenses) => expenses.isEmpty
-                  ? const SliverFillRemaining(
-                      child: Center(child: Text('No expenses found for this period.')),
-                    )
+                  ? const SliverFillRemaining(child: Center(child: Text('No matching expenses.')))
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
@@ -98,9 +135,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
               loading: () => const SliverToBoxAdapter(child: ListSkeleton(itemCount: 8)),
-              error: (e, _) => SliverFillRemaining(
-                child: Center(child: Text('Error loading expenses: $e')),
-              ),
+              error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
             ),
           ],
         ),
@@ -151,23 +186,16 @@ class _SummaryCard extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: Theme.of(context).primaryColor,
+      color: Colors.deepPurple,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const Text(
-              'Total Expenses',
-              style: TextStyle(color: Colors.white70),
-            ),
+            const Text('Total Spent This Period', style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 8),
             Text(
               '\$${summary.totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -181,10 +209,7 @@ class _SummarySkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 120,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(16)),
     );
   }
 }
@@ -192,48 +217,90 @@ class _SummarySkeleton extends StatelessWidget {
 class _FilterBar extends ConsumerWidget {
   final dynamic filters;
   final AsyncValue<dynamic> categoriesAsync;
+  final AsyncValue<dynamic> tagsAsync;
 
-  const _FilterBar({required this.filters, required this.categoriesAsync});
+  const _FilterBar({required this.filters, required this.categoriesAsync, required this.tagsAsync});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
+    return Column(
       children: [
-        TextButton.icon(
-          onPressed: () async {
-            final range = await showDateRangePicker(
-              context: context,
-              initialDateRange: DateTimeRange(start: filters.from, end: filters.to),
-              firstDate: DateTime(2020),
-              lastDate: DateTime(2030),
-            );
-            if (range != null) {
-              ref.read(expenseFiltersProvider.notifier).state =
-                  filters.copyWith(from: range.start, to: range.end);
-            }
-          },
-          icon: const Icon(Icons.date_range),
-          label: Text(
-            '${DateFormat.yMMMd().format(filters.from)} - ${DateFormat.yMMMd().format(filters.to)}',
-            style: const TextStyle(fontSize: 12),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton.icon(
+                onPressed: () async {
+                  final range = await showDateRangePicker(
+                    context: context,
+                    initialDateRange: DateTimeRange(start: filters.from, end: filters.to),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (range != null) {
+                    ref.read(expenseFiltersProvider.notifier).state = filters.copyWith(from: range.start, to: range.end);
+                  }
+                },
+                icon: const Icon(Icons.date_range, size: 16),
+                label: Text(
+                  '${DateFormat.yMMMd().format(filters.from)} - ${DateFormat.yMMMd().format(filters.to)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(filters.sortOrder == 'asc' ? Icons.arrow_upward : Icons.arrow_downward, size: 16),
+              onPressed: () {
+                ref.read(expenseFiltersProvider.notifier).state =
+                    filters.copyWith(sortOrder: filters.sortOrder == 'asc' ? 'desc' : 'asc');
+              },
+            ),
+            PopupMenuButton<String>(
+              initialValue: filters.sortBy,
+              onSelected: (val) => ref.read(expenseFiltersProvider.notifier).state = filters.copyWith(sortBy: val),
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'date', child: Text('Sort by Date')),
+                const PopupMenuItem(value: 'amount', child: Text('Sort by Amount')),
+              ],
+              icon: const Icon(Icons.sort, size: 16),
+            ),
+          ],
         ),
-        const Spacer(),
-        categoriesAsync.when(
-          data: (categories) => DropdownButton<String>(
-            value: filters.categoryId ?? 'all',
-            underline: const SizedBox(),
-            items: [
-              const DropdownMenuItem(value: 'all', child: Text('All')),
-              ...categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
-            ],
-            onChanged: (val) {
-              ref.read(expenseFiltersProvider.notifier).state =
-                  filters.copyWith(categoryId: val);
-            },
-          ),
-          loading: () => const SizedBox(),
-          error: (_, __) => const SizedBox(),
+        Row(
+          children: [
+            Expanded(
+              child: categoriesAsync.when(
+                data: (categories) => DropdownButton<String>(
+                  isExpanded: true,
+                  value: filters.categoryId ?? 'all',
+                  underline: const SizedBox(),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All Categories', style: TextStyle(fontSize: 12))),
+                    ...categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name, style: const TextStyle(fontSize: 12)))),
+                  ],
+                  onChanged: (val) => ref.read(expenseFiltersProvider.notifier).state = filters.copyWith(categoryId: val),
+                ),
+                loading: () => const SizedBox(),
+                error: (_, __) => const SizedBox(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: tagsAsync.when(
+                data: (tags) => DropdownButton<String>(
+                  isExpanded: true,
+                  value: filters.tagId ?? 'all',
+                  underline: const SizedBox(),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All Tags', style: TextStyle(fontSize: 12))),
+                    ...tags.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name, style: const TextStyle(fontSize: 12)))),
+                  ],
+                  onChanged: (val) => ref.read(expenseFiltersProvider.notifier).state = filters.copyWith(tagId: val),
+                ),
+                loading: () => const SizedBox(),
+                error: (_, __) => const SizedBox(),
+              ),
+            ),
+          ],
         ),
       ],
     );

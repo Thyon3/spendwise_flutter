@@ -6,6 +6,10 @@ abstract class ExpenseRepository {
     DateTime? from,
     DateTime? to,
     String? categoryId,
+    String? tagId,
+    String? search,
+    String? sortBy,
+    String? sortOrder,
     int? page,
     int? limit,
   });

@@ -11,6 +11,10 @@ class ExpensesRemoteDataSource {
     DateTime? from,
     DateTime? to,
     String? categoryId,
+    String? tagId,
+    String? search,
+    String? sortBy,
+    String? sortOrder,
     int? page,
     int? limit,
   }) async {
@@ -18,6 +22,10 @@ class ExpensesRemoteDataSource {
     if (from != null) query['from'] = from.toIso8601String();
     if (to != null) query['to'] = to.toIso8601String();
     if (categoryId != null) query['categoryId'] = categoryId;
+    if (tagId != null) query['tagId'] = tagId;
+    if (search != null) query['search'] = search;
+    if (sortBy != null) query['sortBy'] = sortBy;
+    if (sortOrder != null) query['sortOrder'] = sortOrder;
     if (page != null) query['page'] = page;
     if (limit != null) query['limit'] = limit;
 

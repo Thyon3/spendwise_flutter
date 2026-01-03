@@ -13,6 +13,10 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     DateTime? from,
     DateTime? to,
     String? categoryId,
+    String? tagId,
+    String? search,
+    String? sortBy,
+    String? sortOrder,
     int? page,
     int? limit,
   }) =>
@@ -20,6 +24,10 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
         from: from,
         to: to,
         categoryId: categoryId,
+        tagId: tagId,
+        search: search,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
         page: page,
         limit: limit,
       );
