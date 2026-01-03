@@ -1,5 +1,6 @@
 import '../../../../core/network/api_client.dart';
 import '../entities/expense.dart';
+import '../entities/recurring_expense_rule.dart';
 
 class ExpensesRemoteDataSource {
   final ApiClient _client;
@@ -44,5 +45,24 @@ class ExpensesRemoteDataSource {
       'to': to.toIso8601String(),
     });
     return ExpenseSummary.fromJson(response.data);
+  }
+
+  Future<List<RecurringExpenseRule>> getRecurringRules() async {
+    final response = await _client.get('/recurring-expenses');
+    return (response.data as List).map((r) => RecurringExpenseRule.fromJson(r)).toList();
+  }
+
+  Future<RecurringExpenseRule> createRecurringRule(RecurringExpenseRule rule) async {
+    final response = await _client.post('/recurring-expenses', data: rule.toJson());
+    return RecurringExpenseRule.fromJson(response.data);
+  }
+
+  Future<RecurringExpenseRule> updateRecurringRule(String id, RecurringExpenseRule rule) async {
+    final response = await _client.put('/recurring-expenses/$id', data: rule.toJson());
+    return RecurringExpenseRule.fromJson(response.data);
+  }
+
+  Future<void> deleteRecurringRule(String id) async {
+    await _client.delete('/recurring-expenses/$id');
   }
 }

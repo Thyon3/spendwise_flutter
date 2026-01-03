@@ -1,4 +1,5 @@
 import '../../domain/entities/expense.dart';
+import '../../domain/entities/recurring_expense_rule.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../data_sources/expenses_remote_data_source.dart';
 
@@ -34,4 +35,16 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   @override
   Future<ExpenseSummary> getSummary(DateTime from, DateTime to) => _remoteDataSource.getSummary(from, to);
+
+  @override
+  Future<List<RecurringExpenseRule>> getRecurringRules() => _remoteDataSource.getRecurringRules();
+
+  @override
+  Future<RecurringExpenseRule> createRecurringRule(RecurringExpenseRule rule) => _remoteDataSource.createRecurringRule(rule);
+
+  @override
+  Future<RecurringExpenseRule> updateRecurringRule(String id, RecurringExpenseRule rule) => _remoteDataSource.updateRecurringRule(id, rule);
+
+  @override
+  Future<void> deleteRecurringRule(String id) => _remoteDataSource.deleteRecurringRule(id);
 }

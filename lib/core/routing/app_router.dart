@@ -8,6 +8,7 @@ import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/splash_screen.dart';
 import '../../features/expenses/presentation/screens/expense_add_edit_screen.dart';
+import '../../features/expenses/presentation/screens/recurring_expense_list_screen.dart';
 import '../../features/expenses/domain/entities/expense.dart';
 import '../../features/categories/presentation/screens/category_list_screen.dart';
 
@@ -61,6 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/categories',
         builder: (context, state) => const CategoryListScreen(),
+      ),
+      GoRoute(
+        path: '/recurring-expenses',
+        builder: (context, state) => const RecurringExpenseListScreen(),
       ),
     ],
   );
