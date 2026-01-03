@@ -46,6 +46,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const PopupMenuItem(value: '/categories', child: Text('Categories')),
               const PopupMenuItem(value: '/tags', child: Text('Tags')),
               const PopupMenuItem(value: '/recurring-expenses', child: Text('Recurring Expenses')),
+              const PopupMenuItem(value: '/reports', child: Text('Reports')),
+              const PopupMenuItem(value: '/budgets', child: Text('Budgets')),
             ],
             icon: const Icon(Icons.menu),
           ),
