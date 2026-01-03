@@ -63,95 +63,120 @@ class _ExpenseAddEditScreenState extends ConsumerState<ExpenseAddEditScreen> {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.expense == null ? 'Add Expense' : 'Edit Expense'),
-        actions: widget.expense != null
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: opsState is AsyncLoading
-                      ? null
-                      : () => _confirmDelete(context),
-                )
-              ]
-            : null,
-      ),
-      body: categoriesAsync.when(
-        data: (categories) => Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              TextFormField(
-                controller: _amountController,
-                decoration: InputDecoration(
-                  labelText: 'Amount',
-                  prefixText: '\$ ',
-                  border: const OutlineInputBorder(),
-                  errorStyle: const TextStyle(color: Colors.red),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Please enter an amount';
-                  if (double.tryParse(val) == null) return 'Invalid amount';
-                  if (double.parse(val) <= 0) return 'Amount must be greater than 0';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                onChanged: opsState is AsyncLoading ? null : (val) => setState(() => _selectedCategoryId = val),
-                validator: (val) => val == null ? 'Please select a category' : null,
-              ),
-              const SizedBox(height: 20),
-              InkWell(
-                onTap: opsState is AsyncLoading ? null : () => _selectDate(context),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Date',
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today),
-                  ),
-                  child: Text('${_selectedDate.toLocal()}'.split(' ')[0]),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description (Optional)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-                maxLength: 255,
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: opsState is AsyncLoading ? null : _submit,
-                  child: opsState is AsyncLoading
-                      ? const CircularProgressIndicator()
-                      : Text(widget.expense == null ? 'Create' : 'Save Changes'),
-                ),
-              ),
-            ],
-          ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _showExitConfirmation(context);
+        if (shouldPop && context.mounted) {
+          context.pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.expense == null ? 'Add Expense' : 'Edit Expense'),
+          actions: widget.expense != null
+              ? [
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: opsState is AsyncLoading
+                        ? null
+                        : () => _confirmDelete(context),
+                  )
+                ]
+              : null,
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        body: categoriesAsync.when(
+          data: (categories) => Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                TextFormField(
+                  controller: _amountController,
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
+                    prefixText: '\$ ',
+                    border: const OutlineInputBorder(),
+                    errorStyle: const TextStyle(color: Colors.red),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Please enter an amount';
+                    if (double.tryParse(val) == null) return 'Invalid amount';
+                    if (double.parse(val) <= 0) return 'Amount must be greater than 0';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                  onChanged: opsState is AsyncLoading ? null : (val) => setState(() => _selectedCategoryId = val),
+                  validator: (val) => val == null ? 'Please select a category' : null,
+                ),
+                const SizedBox(height: 20),
+                InkWell(
+                  onTap: opsState is AsyncLoading ? null : () => _selectDate(context),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text('${_selectedDate.toLocal()}'.split(' ')[0]),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (Optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                  maxLength: 255,
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: opsState is AsyncLoading ? null : _submit,
+                    child: opsState is AsyncLoading
+                        ? const CircularProgressIndicator()
+                        : Text(widget.expense == null ? 'Create' : 'Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+        ),
       ),
     );
+  }
+
+  Future<bool> _showExitConfirmation(BuildContext context) async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard Changes?'),
+        content: const Text('You have unsaved changes. Are you sure you want to leave?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep Editing')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Discard')),
+        ],
+      ),
+    );
+    return res ?? false;
   }
 
   Future<void> _selectDate(BuildContext context) async {
