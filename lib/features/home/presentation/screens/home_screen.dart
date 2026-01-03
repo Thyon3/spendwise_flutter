@@ -7,6 +7,7 @@ import '../../auth/application/auth_state.dart';
 import '../../expenses/application/expense_list_notifier.dart';
 import '../../expenses/application/expense_summary_notifier.dart';
 import '../../categories/application/category_notifier.dart';
+import '../../../core/presentation/widgets/list_skeleton.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -27,10 +28,12 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.category),
             onPressed: () => context.push('/categories'),
+            tooltip: 'Categories',
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).logout(),
+            onPressed: () => _confirmLogout(context, ref),
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -49,13 +52,15 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Hello, ${user?.email.split('@')[0] ?? 'User'}',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     const SizedBox(height: 16),
                     summaryAsync.when(
                       data: (summary) => _SummaryCard(summary: summary),
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => Text('Error: $e'),
+                      loading: () => _SummarySkeleton(),
+                      error: (e, _) => Center(child: Text('Error: $e')),
                     ),
                     const SizedBox(height: 24),
                     _FilterBar(
@@ -67,30 +72,32 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             expenseListAsync.when(
-              data: (expenses) => SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final expense = expenses[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: _getColor(expense.category?.color),
-                        child: const Icon(Icons.money, color: Colors.white),
+              data: (expenses) => expenses.isEmpty
+                  ? const SliverFillRemaining(
+                      child: Center(child: Text('No expenses found for this period.')),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final expense = expenses[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: _getColor(expense.category?.color),
+                              child: const Icon(Icons.money, color: Colors.white),
+                            ),
+                            title: Text(expense.category?.name ?? 'No Category'),
+                            subtitle: Text(DateFormat.yMMMd().format(expense.date)),
+                            trailing: Text(
+                              '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            onTap: () => context.push('/expenses/edit', extra: expense),
+                          );
+                        },
+                        childCount: expenses.length,
                       ),
-                      title: Text(expense.category?.name ?? 'No Category'),
-                      subtitle: Text(DateFormat.yMMMd().format(expense.date)),
-                      trailing: Text(
-                        '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      onTap: () => context.push('/expenses/edit', extra: expense),
-                    );
-                  },
-                  childCount: expenses.length,
-                ),
-              ),
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
+                    ),
+              loading: () => const SliverToBoxAdapter(child: ListSkeleton(itemCount: 8)),
               error: (e, _) => SliverFillRemaining(
                 child: Center(child: Text('Error loading expenses: $e')),
               ),
@@ -113,6 +120,26 @@ class HomeScreen extends ConsumerWidget {
       return Colors.blue;
     }
   }
+
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => context.pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              context.pop();
+              ref.read(authProvider.notifier).logout();
+            },
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -122,7 +149,9 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Colors.deepPurple,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Theme.of(context).primaryColor,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -136,12 +165,25 @@ class _SummaryCard extends StatelessWidget {
               '\$${summary.totalAmount.toStringAsFixed(2)}',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 32,
+                fontSize: 36,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SummarySkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(16),
       ),
     );
   }
@@ -157,11 +199,11 @@ class _FilterBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        IconButton(
-          icon: const Icon(Icons.date_range),
+        TextButton.icon(
           onPressed: () async {
             final range = await showDateRangePicker(
               context: context,
+              initialDateRange: DateTimeRange(start: filters.from, end: filters.to),
               firstDate: DateTime(2020),
               lastDate: DateTime(2030),
             );
@@ -170,13 +212,19 @@ class _FilterBar extends ConsumerWidget {
                   filters.copyWith(from: range.start, to: range.end);
             }
           },
+          icon: const Icon(Icons.date_range),
+          label: Text(
+            '${DateFormat.yMMMd().format(filters.from)} - ${DateFormat.yMMMd().format(filters.to)}',
+            style: const TextStyle(fontSize: 12),
+          ),
         ),
         const Spacer(),
         categoriesAsync.when(
           data: (categories) => DropdownButton<String>(
             value: filters.categoryId ?? 'all',
+            underline: const SizedBox(),
             items: [
-              const DropdownMenuItem(value: 'all', child: Text('All Categories')),
+              const DropdownMenuItem(value: 'all', child: Text('All')),
               ...categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
             ],
             onChanged: (val) {
