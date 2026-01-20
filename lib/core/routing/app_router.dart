@@ -14,6 +14,9 @@ import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/budgets/presentation/screens/budget_list_screen.dart';
 import '../../features/expenses/domain/entities/expense.dart';
 import '../../features/categories/presentation/screens/category_list_screen.dart';
+import '../../features/income/presentation/pages/income_list_page.dart';
+import '../../features/income/presentation/pages/income_add_edit_page.dart';
+import '../../features/settings/presentation/pages/settings_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -81,6 +84,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/budgets',
         builder: (context, state) => const BudgetListScreen(),
+      ),
+      GoRoute(
+        path: '/incomes',
+        builder: (context, state) => const IncomeListPage(),
+      ),
+      GoRoute(
+        path: '/incomes/add',
+        builder: (context, state) => const IncomeAddEditPage(),
+      ),
+      GoRoute(
+        path: '/incomes/edit',
+        builder: (context, state) {
+          final income = state.extra as Income?;
+          return IncomeAddEditPage(income: income);
+        },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsPage(),
       ),
     ],
   );

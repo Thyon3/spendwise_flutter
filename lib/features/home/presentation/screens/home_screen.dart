@@ -10,6 +10,8 @@ import '../../categories/application/category_notifier.dart';
 import '../../expenses/application/tag_notifier.dart';
 import '../../exports/infrastructure/export_service.dart';
 import '../../../core/presentation/widgets/list_skeleton.dart';
+import '../../reports/presentation/providers/reports_provider.dart';
+import '../../reports/domain/entities/financial_summary.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -32,10 +34,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final authState = ref.watch(authProvider);
     final user = authState is Authenticated ? authState.user : null;
     final expenseListAsync = ref.watch(expenseListProvider);
-    final summaryAsync = ref.watch(expenseSummaryProvider);
+    final filters = ref.watch(expenseFiltersProvider);
+    final summaryAsync = ref.watch(financialSummaryProvider(DateTimeRange(start: filters.from, end: filters.to)));
     final categoriesAsync = ref.watch(categoryListProvider);
     final tagsAsync = ref.watch(tagListProvider);
-    final filters = ref.watch(expenseFiltersProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -44,11 +46,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (val) => context.push(val),
             itemBuilder: (context) => [
+              const PopupMenuItem(value: '/incomes', child: Text('Incomes')),
               const PopupMenuItem(value: '/categories', child: Text('Categories')),
               const PopupMenuItem(value: '/tags', child: Text('Tags')),
               const PopupMenuItem(value: '/recurring-expenses', child: Text('Recurring Expenses')),
               const PopupMenuItem(value: '/reports', child: Text('Reports')),
               const PopupMenuItem(value: '/budgets', child: Text('Budgets')),
+              const PopupMenuItem(value: '/settings', child: Text('Settings')),
             ],
             icon: const Icon(Icons.menu),
           ),
@@ -203,7 +207,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class _SummaryCard extends StatelessWidget {
-  final dynamic summary;
+  final FinancialSummary summary;
   const _SummaryCard({required this.summary});
 
   @override
@@ -211,20 +215,36 @@ class _SummaryCard extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: Colors.deepPurple,
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const Text('Total Spent This Period', style: TextStyle(color: Colors.white70)),
-            const SizedBox(height: 8),
-            Text(
-              '\$${summary.totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+            const Text('Financial Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildItem(context, 'Income', summary.income, Colors.green),
+                _buildItem(context, 'Expense', summary.expense, Colors.red),
+                _buildItem(context, 'Balance', summary.balance, summary.balance >= 0 ? Colors.blue : Colors.orange),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildItem(BuildContext context, String label, double amount, Color color) {
+    return Column(
+      children: [
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          '\$${amount.toStringAsFixed(2)}',
+          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+      ],
     );
   }
 }

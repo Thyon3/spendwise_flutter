@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/income_provider.dart';
 // import 'add_income_page.dart'; // Will resolve when created
 
@@ -17,8 +18,7 @@ class IncomeListPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
-               // Navigator.push(context, MaterialPageRoute(builder: (_) => const AddIncomePage()));
-               // For now placeholder logic
+               context.push('/incomes/add');
             },
           )
         ],
@@ -43,6 +43,7 @@ class IncomeListPage extends ConsumerWidget {
                 onLongPress: () {
                   ref.read(incomeListProvider.notifier).deleteIncome(income.id);
                 },
+                onTap: () => context.push('/incomes/edit', extra: income),
               );
             },
           );

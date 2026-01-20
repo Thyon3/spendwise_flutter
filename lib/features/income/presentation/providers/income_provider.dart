@@ -37,6 +37,13 @@ class IncomeListNotifier extends StateNotifier<AsyncValue<List<Income>>> {
     }
   }
 
+  Future<void> updateIncome(Income income) async {
+    final result = await AsyncValue.guard(() => _repository.updateIncome(income));
+    if (result.hasValue) {
+        getIncomes();
+    }
+  }
+
   Future<void> deleteIncome(String id) async {
     await _repository.deleteIncome(id);
      getIncomes();
