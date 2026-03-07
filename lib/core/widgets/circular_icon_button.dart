@@ -28,6 +28,7 @@ class CircularIconButton extends StatelessWidget {
       child: IconButton(
         icon: Icon(icon, color: iconColor ?? Colors.white),
         onPressed: onPressed,
+        padding: EdgeInsets.zero,
       ),
     );
   }
